@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>American Libraries, 1876</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️️</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:      #12100e;
+    --surface: #1c1916;
+    --border:  #3a3228;
+    --cream:   #e8dcc8;
+    --faded:   #8a7a68;
+    --gold:    #c9a84c;
+    --rust:    #b5522a;
+    --moss:    #6b8c5a;
+    --ink:     #f0e8d8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Libre Baskerville', serif;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    padding: 2.5rem 1rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  header::after {
+    content: '';
+    display: block;
+    width: 40%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 1.25rem auto 0;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  header p {
+    font-style: italic;
+    color: var(--faded);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── PAGE WRAPPER ── */
+  .page-section {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 0;
+  }
+  .page-section.bottom { padding-bottom: 3rem; }
+
+  .section-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+  }
+
+  /* ── MAP ── */
+  #map {
+    width: 100%;
+    height: clamp(300px, 55vw, 520px);
+    border: 1px solid var(--border);
+    background: #1a1814;
+  }
+
+  /* ── SLIDER ── */
+  .slider-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .year-display {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    font-weight: 700;
+    color: var(--gold);
+    min-width: 4rem;
+    line-height: 1;
+  }
+  .slider-controls {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 140px;
+  }
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--gold);
+    cursor: pointer;
+    height: 4px;
+  }
+  .slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: var(--faded);
+    font-style: italic;
+  }
+  .play-btn {
+    background: none;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Libre Baskerville', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.45rem 1rem;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .play-btn:hover { background: var(--gold); color: var(--bg); }
+  .count-display {
+    font-size: 0.75rem;
+    color: var(--faded);
+    font-style: italic;
+    white-space: nowrap;
+  }
+  .count-display span { color: var(--cream); font-style: normal; }
+
+  /* ── LEGEND ── */
+  .legend-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 0.65rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    color: var(--faded);
+  }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── TOTALS ── */
+  .totals-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+  .total-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem 1.25rem;
+    position: relative;
+    text-align: center;
+  }
+  .total-card::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .total-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--faded);
+    margin-bottom: 0.5rem;
+  }
+  .total-number {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.6rem, 5vw, 2.8rem);
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .total-sub {
+    font-size: 0.65rem;
+    color: var(--faded);
+    font-style: italic;
+    margin-top: 0.4rem;
+  }
+
+  /* ── PIE ── */
+  .pie-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.75rem 2rem;
+    position: relative;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 2.5rem;
+    align-items: center;
+    margin-top: 1rem;
+  }
+  .pie-panel::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .pie-text-col {
+    /* fixed by grid column width */
+  }
+  .pie-canvas-col {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    margin: 0 auto;
+  }
+  .pie-canvas-col canvas {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    position: relative;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+  }
+  .panel-sub {
+    font-size: 0.68rem;
+    font-style: italic;
+    color: var(--faded);
+    margin-bottom: 1.1rem;
+  }
+  .panel-divider {
+    height: 1px;
+    background: linear-gradient(to right, var(--gold), transparent);
+    margin-bottom: 1.1rem;
+    opacity: 0.4;
+  }
+
+  /* ── THREE LISTS ── */
+  .lists-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+
+  /* ── BAR PANEL ── */
+  .bar-panel {
+    margin-top: 1.25rem;
+  }
+  .bar-canvas-wrap {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* ── RANKED LISTS ── */
+  .ranked-list { list-style: none; }
+  .ranked-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.48rem 0;
+    border-bottom: 1px solid rgba(58,50,40,0.55);
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+  .ranked-list li:last-child { border-bottom: none; }
+  .rank-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.66rem;
+    color: var(--gold);
+    opacity: 0.6;
+    min-width: 1.1rem;
+    text-align: right;
+    flex-shrink: 0;
+    padding-top: 0.05rem;
+  }
+  .rank-name { flex: 1; color: var(--cream); min-width: 0; }
+  .rank-detail {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--faded);
+    font-style: italic;
+    margin-top: 0.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rank-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.75rem;
+    color: var(--gold);
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-top: 0.05rem;
+  }
+  .rank-bar-bg {
+    display: block;
+    height: 2px;
+    background: rgba(201,168,76,0.12);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-top: 0.28rem;
+  }
+  .rank-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--gold);
+    opacity: 0.4;
+    border-radius: 1px;
+  }
+
+  canvas { max-width: 100%; }
+
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--faded);
+    font-style: italic;
+    letter-spacing: 0.03em;
+    margin-top: 3rem;
+  }
+
+  /* ── LEAFLET ── */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    color: var(--cream);
+    font-family: 'Libre Baskerville', serif;
+    font-size: 0.78rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+  .leaflet-popup-tip { background: var(--surface); }
+  .popup-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    color: var(--ink);
+    margin-bottom: 0.3rem;
+    line-height: 1.2;
+  }
+  .popup-meta { color: var(--faded); font-size: 0.7rem; margin-top: 0.2rem; }
+  .popup-meta span { color: var(--cream); }
+  .leaflet-control-zoom a {
+    background: var(--surface) !important;
+    color: var(--cream) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .lists-grid { grid-template-columns: 1fr 1fr; }
+    .pie-panel { grid-template-columns: 200px 1fr; gap: 1.5rem; }
+  }
+
+  @media (max-width: 600px) {
+    .lists-grid { grid-template-columns: 1fr; }
+    .totals-row { grid-template-columns: 1fr; }
+    .pie-panel {
+      grid-template-columns: 1fr;
+    }
+    .pie-canvas-col { max-width: 280px; }
+    .slider-ticks span:nth-child(3),
+    .slider-ticks span:nth-child(5) { display: none; }
+    .page-section { padding-left: 1rem; padding-right: 1rem; }
+  }
+  /* ── NAV ── */
+  .site-nav {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .site-nav a {
+    color: var(--faded);
+    text-decoration: none;
+    padding: 0.4rem 1rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .site-nav a:hover { color: var(--cream); border-color: var(--border); }
+  .site-nav a.active {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.06);
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html" class="active">1876</a>
+  <a href="today.html">Today</a>
+</nav>
+
+<header>
+  <h1>American Libraries, 1876</h1>
+  <p>Bureau of Education Survey &mdash; 3,097 Institutions &mdash; Founded 1638&ndash;1876</p>
+</header>
+
+<!-- § I MAP -->
+<div class="page-section">
+  <div class="section-label">§ I &mdash; Geographic Distribution</div>
+  <div id="map"></div>
+  <div class="slider-wrap">
+    <div class="year-display" id="year-display">1638</div>
+    <div class="slider-controls">
+      <input type="range" id="year-slider" min="1638" max="1876" value="1638" step="1">
+      <div class="slider-ticks">
+        <span>1638</span><span>1700</span><span>1750</span><span>1776</span><span>1825</span><span>1876</span>
+      </div>
+    </div>
+    <button class="play-btn" id="play-btn">▶ Play</button>
+    <div class="count-display">Showing <span id="visible-count">—</span> libraries</div>
+  </div>
+  <div class="legend-wrap" id="legend"></div>
+</div>
+
+<!-- § II TOTALS -->
+<div class="page-section" style="margin-top:2.5rem;">
+  <div class="section-label">§ II &mdash; Aggregate Totals</div>
+  <div class="totals-row">
+    <div class="total-card">
+      <div class="total-label">Total Libraries Surveyed</div>
+      <div class="total-number" id="total-libraries">—</div>
+      <div class="total-sub">institutions, as of 1876</div>
+    </div>
+    <div class="total-card">
+      <div class="total-label">Total Volumes on Record</div>
+      <div class="total-number" id="total-volumes">—</div>
+      <div class="total-sub">books &amp; pamphlets, reported holdings</div>
+    </div>
+  </div>
+</div>
+
+<!-- § III PIE -->
+<div class="page-section" style="margin-top:2.5rem;">
+  <div class="section-label">§ III &mdash; Libraries by Class</div>
+  <div class="pie-panel">
+    <div class="pie-text-col">
+      <div class="panel-title">Composition of American Libraries</div>
+      <div class="panel-sub">All 3,097 institutions, by class of collection</div>
+      <div style="height:1px;background:linear-gradient(to right,var(--gold),transparent);margin:1rem 0;opacity:0.4;"></div>
+      <div style="font-size:0.7rem;color:var(--faded);line-height:2;" id="pie-legend-text"></div>
+    </div>
+    <div class="pie-canvas-col">
+      <canvas id="pie-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- § IV THREE LISTS -->
+<div class="page-section" style="margin-top:2.5rem;">
+  <div class="section-label">§ IV &mdash; Rankings</div>
+  <div class="lists-grid">
+
+    <div class="panel">
+      <div class="panel-title">Top States by Library Count</div>
+      <div class="panel-sub">15 states with the most institutions</div>
+      <div class="panel-divider"></div>
+      <ul class="ranked-list" id="list-states"></ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Top States by Volume</div>
+      <div class="panel-sub">15 states by total reported holdings</div>
+      <div class="panel-divider"></div>
+      <ul class="ranked-list" id="list-state-volumes"></ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Largest Libraries by Volume</div>
+      <div class="panel-sub">Top 10 institutions with reported holdings</div>
+      <div class="panel-divider"></div>
+      <ul class="ranked-list" id="list-volumes"></ul>
+    </div>
+
+  </div>
+</div>
+
+<!-- § V BAR CHART -->
+<div class="page-section bottom" style="margin-top:2.5rem;">
+  <div class="section-label">§ V &mdash; Social Libraries by Access Type</div>
+  <div class="panel bar-panel">
+    <div class="panel-title">Subscription vs. Free vs. Unknown</div>
+    <div class="panel-sub">Social, Society, and Public libraries — access classification from Bureau of Education survey</div>
+    <div class="panel-divider"></div>
+    <div class="bar-canvas-wrap">
+      <canvas id="bar-chart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- § VI NETWORK MAP -->
+<div class="page-section bottom" style="margin-top:2.5rem;">
+  <div class="section-label">§ VI &mdash; Library Network by Class &amp; Volume</div>
+  <div class="panel" style="padding:1.75rem 2rem;">
+    <div class="panel-title">Collection Gravity</div>
+    <div class="panel-sub">Class nodes anchor clusters — individual libraries sized by reported volumes. Drag to explore.</div>
+    <div class="panel-divider"></div>
+    <div id="network-wrap" style="width:100%;height:700px;position:relative;overflow:hidden;">
+      <svg id="network-svg" style="width:100%;height:100%;display:block;"></svg>
+      <div id="network-tooltip" style="
+        position:absolute;pointer-events:none;opacity:0;
+        background:#1c1916;border:1px solid #3a3228;
+        padding:0.6rem 0.9rem;font-family:'Libre Baskerville',serif;
+        font-size:0.72rem;color:#e8dcc8;max-width:220px;
+        transition:opacity 0.15s;line-height:1.5;
+      "></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Data: <em>Public Libraries in the United States of America</em>, Bureau of Education, 1876.
+  Geocoding via Nominatim / OpenStreetMap contributors.
+  Built with Leaflet.js &amp; Chart.js.
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// STATE LOOKUP
+// ══════════════════════════════════════════════════════════════
+const STATE_NAMES = {
+  AL:"Alabama", AR:"Arkansas", CA:"California", CO:"Colorado", CT:"Connecticut",
+  DE:"Delaware", DC:"Dist. of Columbia", FL:"Florida", GA:"Georgia", ID:"Idaho",
+  IL:"Illinois", IN:"Indiana", IA:"Iowa", KS:"Kansas", KY:"Kentucky",
+  LA:"Louisiana", ME:"Maine", MD:"Maryland", MA:"Massachusetts", MI:"Michigan",
+  MN:"Minnesota", MS:"Mississippi", MO:"Missouri", MT:"Montana", NE:"Nebraska",
+  NV:"Nevada", NH:"New Hampshire", NJ:"New Jersey", NM:"New Mexico", NY:"New York",
+  NC:"North Carolina", ND:"North Dakota", OH:"Ohio", OR:"Oregon", PA:"Pennsylvania",
+  RI:"Rhode Island", SC:"South Carolina", TN:"Tennessee", TX:"Texas", UT:"Utah",
+  VT:"Vermont", VA:"Virginia", WA:"Washington", WV:"West Virginia", WI:"Wisconsin",
+  "D.C.":"Dist. of Columbia", "D. C.":"Dist. of Columbia",
+};
+function stateName(abbr) {
+  if (!abbr) return abbr;
+  return STATE_NAMES[abbr.trim()] || abbr.trim();
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════
+const GEOJSON_FILE = "1876v1.geojson";
+
+const CLASS_COLORS = {
+  "Academic":                "#c9a84c",
+  "Social":                  "#b5522a",
+  "Public":                  "#6b8c5a",
+  "College":                 "#5a7a8c",
+  "Society":                 "#8c5a7a",
+  "Atheneum & Reading Room": "#7a8c5a",
+  "Law":                     "#8c7a5a",
+  "Miscellaneous":           "#5a6b7a",
+  "Theological":             "#7a5a8c",
+  "Y.M.C.A.":                "#5a8c7a",
+  "School":                  "#8c8c5a",
+  "Scientific":              "#5a7a6b",
+  "Medical":                 "#8c5a5a",
+  "Historical":              "#6b5a8c",
+  "Garrison / Military":     "#5a5a8c",
+  "State":                   "#8c6b5a",
+  "Government":              "#5a8c8c",
+  "Mercantile":              "#7a6b5a",
+  "Territorial":             "#6b8c8c",
+  "Historical & Scientific": "#8c7a6b",
+  "Other":                   "#4a4a4a",
+};
+
+// ══════════════════════════════════════════════════════════════
+// MAP
+// ══════════════════════════════════════════════════════════════
+const US_BOUNDS = L.latLngBounds(L.latLng(24.0,-125.0), L.latLng(50.0,-66.0));
+const map = L.map('map', {
+  center:[39.5,-96], zoom:4, minZoom:4, maxZoom:18,
+  maxBounds:US_BOUNDS, maxBoundsViscosity:1.0, zoomControl:true,
+});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19,
+}).addTo(map);
+
+let allFeatures=[], markers=L.layerGroup().addTo(map);
+let playTimeout=null, isPlaying=false;
+
+function makeCircleMarker(f) {
+  const color = CLASS_COLORS[f.properties.class]||CLASS_COLORS["Other"];
+  const m = L.circleMarker(
+    [f.geometry.coordinates[1], f.geometry.coordinates[0]],
+    {radius:5, fillColor:color, color:"rgba(0,0,0,0.4)", weight:0.5, fillOpacity:0.85}
+  );
+  const p = f.properties;
+  m.bindPopup(`
+    <div class="popup-name">${p.name}</div>
+    <div class="popup-meta"><span>${p.city}, ${stateName(p.state)}</span></div>
+    <div class="popup-meta">Founded: <span>${p.year||"Unknown"}</span></div>
+    <div class="popup-meta">Type: <span>${p.class}</span></div>
+    ${p.volumes?`<div class="popup-meta">Volumes: <span>${p.volumes}</span></div>`:""}
+  `);
+  return m;
+}
+
+function renderYear(year) {
+  markers.clearLayers();
+  const visible = allFeatures.filter(f=>f.properties.year!==null && f.properties.year<=year);
+  visible.forEach(f=>makeCircleMarker(f).addTo(markers));
+  document.getElementById("visible-count").textContent = visible.length.toLocaleString();
+}
+
+// ══════════════════════════════════════════════════════════════
+// PLAY SPEED — pivots at 1776
+// ══════════════════════════════════════════════════════════════
+function msForYear(year) {
+  if (year<=1775) return 240;
+  const t = (year-1776)/(1876-1776);
+  return 240 + (900-240)*(t*t);
+}
+
+const slider=document.getElementById("year-slider");
+const yearDisplay=document.getElementById("year-display");
+const playBtn=document.getElementById("play-btn");
+
+slider.addEventListener("input",()=>{ yearDisplay.textContent=slider.value; renderYear(parseInt(slider.value)); });
+
+function stopPlay(){ clearTimeout(playTimeout); playTimeout=null; isPlaying=false; playBtn.textContent="▶ Play"; }
+function scheduleNextStep(){
+  const cur=parseInt(slider.value);
+  if(cur>=1876){stopPlay();return;}
+  playTimeout=setTimeout(()=>{
+    const next=cur+1; slider.value=next; yearDisplay.textContent=next;
+    renderYear(next); scheduleNextStep();
+  }, msForYear(cur));
+}
+const audio = new Audio('etude2.mp3');
+
+playBtn.addEventListener("click",()=>{
+  if(isPlaying){
+    stopPlay();
+  } else {
+    if(parseInt(slider.value)>=1876) slider.value=1638;
+    playBtn.textContent="■ Stop"; isPlaying=true; scheduleNextStep();
+    audio.currentTime = 0;
+    audio.play().catch(()=>{});
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// LEGEND
+// ══════════════════════════════════════════════════════════════
+function buildLegend(features){
+  const counts={};
+  features.forEach(f=>{const c=f.properties.class; counts[c]=(counts[c]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const wrap=document.getElementById("legend"); wrap.innerHTML="";
+  sorted.forEach(([cls,count])=>{
+    const color=CLASS_COLORS[cls]||CLASS_COLORS["Other"];
+    const item=document.createElement("div"); item.className="legend-item";
+    item.innerHTML=`<div class="legend-dot" style="background:${color}"></div><span>${cls} (${count})</span>`;
+    wrap.appendChild(item);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+function parseVolumes(raw){
+  if(!raw) return null;
+  const n=parseInt(String(raw).replace(/[^0-9]/g,""));
+  return isNaN(n)?null:n;
+}
+
+// ══════════════════════════════════════════════════════════════
+// TOTALS
+// ══════════════════════════════════════════════════════════════
+function buildTotals(features){
+  let v=0;
+  features.forEach(f=>{const n=parseVolumes(f.properties.volumes); if(n!==null) v+=n;});
+  document.getElementById("total-libraries").textContent=features.length.toLocaleString();
+  document.getElementById("total-volumes").textContent=v.toLocaleString();
+}
+
+// ══════════════════════════════════════════════════════════════
+// PIE CHART
+// ══════════════════════════════════════════════════════════════
+function buildPieChart(features){
+  const counts={};
+  features.forEach(f=>{const c=f.properties.class; counts[c]=(counts[c]||0)+1;});
+  const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const labels=entries.map(e=>e[0]);
+  const data=entries.map(e=>e[1]);
+  const colors=labels.map(l=>CLASS_COLORS[l]||CLASS_COLORS["Other"]);
+  const total=data.reduce((a,b)=>a+b,0);
+
+  document.getElementById("pie-legend-text").innerHTML=entries.map(([cls,n])=>
+    `<span style="color:${CLASS_COLORS[cls]||'#4a4a4a'}">■</span> ${cls}: <strong style="color:var(--cream)">${n.toLocaleString()}</strong> <span style="opacity:0.6">(${(n/total*100).toFixed(1)}%)</span>`
+  ).join("<br>");
+
+  new Chart(document.getElementById("pie-chart"),{
+    type:"doughnut",
+    data:{labels, datasets:[{data, backgroundColor:colors, borderColor:"#12100e", borderWidth:1.5}]},
+    options:{
+      maintainAspectRatio: false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed/total*100).toFixed(1)}%)`}}
+      },
+      animation:{animateRotate:true, duration:800},
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// RANKED LIST BUILDER
+// ══════════════════════════════════════════════════════════════
+function buildRankedList(ulId, items, maxVal){
+  const ul=document.getElementById(ulId); ul.innerHTML="";
+  items.forEach((item,i)=>{
+    const pct=Math.round((item.value/maxVal)*100);
+    const li=document.createElement("li");
+    li.innerHTML=`
+      <span class="rank-num">${i+1}</span>
+      <span class="rank-name">
+        ${item.label}
+        ${item.detail?`<span class="rank-detail">${item.detail}</span>`:""}
+        <span class="rank-bar-bg"><span class="rank-bar-fill" style="width:${pct}%"></span></span>
+      </span>
+      <span class="rank-value">${item.display}</span>
+    `;
+    ul.appendChild(li);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIST: STATES BY COUNT (15)
+// ══════════════════════════════════════════════════════════════
+function buildListStates(features){
+  const counts={};
+  features.forEach(f=>{const s=f.properties.state; if(s) counts[s]=(counts[s]||0)+1;});
+  const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const max=sorted[0]?.[1]||1;
+  buildRankedList("list-states", sorted.map(([abbr,n])=>({label:stateName(abbr), value:n, display:n.toLocaleString()})), max);
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIST: STATES BY VOLUME (15)
+// ══════════════════════════════════════════════════════════════
+function buildListStateVolumes(features){
+  const totals={};
+  features.forEach(f=>{
+    const s=f.properties.state, v=parseVolumes(f.properties.volumes);
+    if(s&&v!==null) totals[s]=(totals[s]||0)+v;
+  });
+  const sorted=Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const max=sorted[0]?.[1]||1;
+  buildRankedList("list-state-volumes", sorted.map(([abbr,n])=>({label:stateName(abbr), value:n, display:n.toLocaleString()})), max);
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIST: LARGEST LIBRARIES (10)
+// ══════════════════════════════════════════════════════════════
+function buildListVolumes(features){
+  const sorted=features
+    .map(f=>({...f.properties, volNum:parseVolumes(f.properties.volumes)}))
+    .filter(p=>p.volNum!==null)
+    .sort((a,b)=>b.volNum-a.volNum)
+    .slice(0,10);
+  const max=sorted[0]?.volNum||1;
+  buildRankedList("list-volumes", sorted.map(p=>({
+    label: p.name,
+    detail: `${p.city}, ${stateName(p.state)} · ${p.class}`,
+    value: p.volNum,
+    display: p.volNum.toLocaleString(),
+  })), max);
+}
+
+// ══════════════════════════════════════════════════════════════
+// BAR CHART — hardcoded from Bureau of Education data
+// Social (Soc'l): 548 Subscription, 89 Free,  61 Unknown
+// Society:         10 Subscription,  8 Free, 222 Unknown
+// Public:          36 Subscription, 305 Free,   7 Unknown
+// ══════════════════════════════════════════════════════════════
+function buildBarChart(){
+  new Chart(document.getElementById("bar-chart"),{
+    type:"bar",
+    data:{
+      labels:["Social","Public"],
+      datasets:[
+        {label:"Subscription", data:[548,36],  backgroundColor:"#b5522a", borderWidth:0},
+        {label:"Free",         data:[89,305],  backgroundColor:"#6b8c5a", borderWidth:0},
+        {label:"Unknown",      data:[61,7],    backgroundColor:"#4a5060", borderWidth:0},
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        x:{
+          stacked:true,
+          ticks:{color:"#8a7a68", font:{family:"'Libre Baskerville',serif", size:11}},
+          grid:{color:"rgba(255,255,255,0.04)"},
+        },
+        y:{
+          stacked:true,
+          ticks:{color:"#8a7a68", font:{family:"'Libre Baskerville',serif", size:10}},
+          grid:{color:"rgba(255,255,255,0.04)"},
+        }
+      },
+      plugins:{
+        legend:{labels:{color:"#8a7a68", font:{family:"'Libre Baskerville',serif",size:10}, boxWidth:10, padding:14}},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`}}
+      },
+      animation:{duration:800},
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// NETWORK MAP — D3 force simulation, all libraries
+// ══════════════════════════════════════════════════════════════
+function buildNetwork(features) {
+  const wrap = document.getElementById("network-wrap");
+  const tooltip = document.getElementById("network-tooltip");
+
+  // Use a small delay so the DOM has painted and clientWidth is real
+  setTimeout(() => {
+    const W = wrap.clientWidth || 1200;
+    const H = 820;
+    wrap.style.height = H + "px";
+
+    const svg = d3.select("#network-svg")
+      .attr("width", W)
+      .attr("height", H)
+      .attr("viewBox", `0 0 ${W} ${H}`);
+
+    // ── class metadata ───────────────────────────────────────
+    const classGroups = {};
+    features.forEach(f => {
+      const cls = f.properties.class || "Other";
+      if (!classGroups[cls]) classGroups[cls] = { count: 0 };
+      classGroups[cls].count++;
+    });
+
+    const classKeys = Object.keys(classGroups);
+    const countMax  = Math.max(...classKeys.map(c => classGroups[c].count));
+
+    // Class node radius: 20–46px based on member count
+    const classR = cls => 20 + (classGroups[cls].count / countMax) * 26;
+
+    // ── volume scale for library nodes: 2–14px ───────────────
+    const allVols = features.map(f => parseVolumes(f.properties.volumes) || 0);
+    const volMax  = Math.max(...allVols);
+    const libR    = vol => vol > 0 ? 2 + (vol / volMax) * 12 : 2;
+
+    // ── nodes ────────────────────────────────────────────────
+    const classNodes = classKeys.map((cls, i) => {
+      // arrange class nodes in a rough grid across the canvas at startup
+      const cols = Math.ceil(Math.sqrt(classKeys.length));
+      const row = Math.floor(i / cols);
+      const col = i % cols;
+      const cellW = W / cols;
+      const cellH = H / Math.ceil(classKeys.length / cols);
+      return {
+        id: cls, type: "class", cls,
+        r: classR(cls),
+        count: classGroups[cls].count,
+        x: cellW * col + cellW / 2 + (Math.random() - 0.5) * 60,
+        y: cellH * row + cellH / 2 + (Math.random() - 0.5) * 60,
+      };
+    });
+
+    const libNodes = features.map((f, i) => {
+      const cls = f.properties.class || "Other";
+      const vol = parseVolumes(f.properties.volumes) || 0;
+      return {
+        id: `lib-${i}`, type: "library",
+        cls, vol,
+        name: f.properties.name,
+        city: f.properties.city,
+        state: f.properties.state,
+        volumes: f.properties.volumes,
+        r: libR(vol),
+        x: W / 2 + (Math.random() - 0.5) * 400,
+        y: H / 2 + (Math.random() - 0.5) * 400,
+      };
+    });
+
+    const nodes = [...classNodes, ...libNodes];
+
+    // Link each library to its class anchor
+    const links = libNodes.map(n => ({ source: n.cls, target: n.id }));
+
+    // ── defs: glow gradients ─────────────────────────────────
+    const defs = svg.append("defs");
+    classKeys.forEach(cls => {
+      const color = CLASS_COLORS[cls] || "#4a4a4a";
+      const safeId = "glow-" + cls.replace(/[^a-zA-Z0-9]/g, "");
+      const g = defs.append("radialGradient")
+        .attr("id", safeId).attr("cx","50%").attr("cy","50%").attr("r","50%");
+      g.append("stop").attr("offset","0%").attr("stop-color",color).attr("stop-opacity",0.45);
+      g.append("stop").attr("offset","100%").attr("stop-color",color).attr("stop-opacity",0);
+    });
+
+    // ── force simulation ─────────────────────────────────────
+    // Link distance: just enough for library to clear its class node
+    const sim = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links)
+        .id(d => d.id)
+        .distance(d => {
+          const src = typeof d.source === "object" ? d.source : nodes.find(n=>n.id===d.source);
+          const tgt = typeof d.target === "object" ? d.target : nodes.find(n=>n.id===d.target);
+          return (src?.r || 30) + (tgt?.r || 3) + 8;
+        })
+        .strength(0.7)
+      )
+      .force("charge", d3.forceManyBody()
+        .strength(d => d.type === "class" ? -600 : -4)
+        .distanceMax(180)
+      )
+      .force("center", d3.forceCenter(W / 2, H / 2).strength(0.08))
+      .force("collide", d3.forceCollide().radius(d => d.r + 1.5).strength(0.7).iterations(2))
+      .force("bound", () => {
+        // soft wall: push nodes back toward canvas if they stray near edges
+        const pad = 40;
+        nodes.forEach(d => {
+          if (d.x < pad)      d.vx += (pad - d.x) * 0.08;
+          if (d.x > W - pad)  d.vx -= (d.x - (W - pad)) * 0.08;
+          if (d.y < pad)      d.vy += (pad - d.y) * 0.08;
+          if (d.y > H - pad)  d.vy -= (d.y - (H - pad)) * 0.08;
+        });
+      })
+      .alphaDecay(0.015)
+      .velocityDecay(0.4);
+
+    // ── render layers ─────────────────────────────────────────
+
+    // Halos behind class nodes
+    const haloLayer = svg.append("g");
+    const haloEls = haloLayer.selectAll("circle").data(classNodes).join("circle")
+      .attr("r", d => d.r * 3)
+      .attr("fill", d => `url(#glow-${d.cls.replace(/[^a-zA-Z0-9]/g,"")})`)
+      .attr("pointer-events","none");
+
+    // Links
+    const linkLayer = svg.append("g");
+    const linkEls = linkLayer.selectAll("line").data(links).join("line")
+      .attr("stroke", d => {
+        const cls = typeof d.source === "object" ? d.source.id : d.source;
+        return CLASS_COLORS[cls] || "#4a4a4a";
+      })
+      .attr("stroke-opacity", 0.08)
+      .attr("stroke-width", 0.6);
+
+    // Library nodes
+    const libLayer = svg.append("g");
+    const libEls = libLayer.selectAll("circle").data(libNodes).join("circle")
+      .attr("r", d => d.r)
+      .attr("fill", d => CLASS_COLORS[d.cls] || "#4a4a4a")
+      .attr("fill-opacity", 0.7)
+      .attr("stroke", d => CLASS_COLORS[d.cls] || "#4a4a4a")
+      .attr("stroke-opacity", 0.85)
+      .attr("stroke-width", 0.4)
+      .style("cursor","pointer")
+      .on("mousemove", (event, d) => {
+        const rect = wrap.getBoundingClientRect();
+        tooltip.style.opacity = "1";
+        tooltip.style.left = (event.clientX - rect.left + 14) + "px";
+        tooltip.style.top  = (event.clientY - rect.top  - 8)  + "px";
+        tooltip.innerHTML = `
+          <span style="font-family:'Playfair Display',serif;color:#f0e8d8;">${d.name}</span><br>
+          <span style="color:#8a7a68">${d.city}, ${stateName(d.state)}</span><br>
+          <span style="color:${CLASS_COLORS[d.cls]||'#ccc'}">${d.cls}</span>
+          ${d.volumes ? `<br><span style="color:#8a7a68">Volumes: </span><span style="color:#e8dcc8">${d.volumes}</span>` : ""}
+        `;
+      })
+      .on("mouseleave", () => tooltip.style.opacity = "0")
+      .call(d3.drag()
+        .on("start", (e,d) => { if(!e.active) sim.alphaTarget(0.2).restart(); d.fx=d.x; d.fy=d.y; })
+        .on("drag",  (e,d) => { d.fx=e.x; d.fy=e.y; })
+        .on("end",   (e,d) => { if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+      );
+
+    // Class nodes on top
+    const classLayer = svg.append("g");
+    const classEls = classLayer.selectAll("g").data(classNodes).join("g")
+      .style("cursor","grab")
+      .call(d3.drag()
+        .on("start", (e,d) => { if(!e.active) sim.alphaTarget(0.2).restart(); d.fx=d.x; d.fy=d.y; })
+        .on("drag",  (e,d) => { d.fx=e.x; d.fy=e.y; })
+        .on("end",   (e,d) => { if(!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; })
+      )
+      .on("mousemove", (event, d) => {
+        const rect = wrap.getBoundingClientRect();
+        tooltip.style.opacity = "1";
+        tooltip.style.left = (event.clientX - rect.left + 14) + "px";
+        tooltip.style.top  = (event.clientY - rect.top  - 8)  + "px";
+        tooltip.innerHTML = `
+          <span style="font-family:'Playfair Display',serif;color:${CLASS_COLORS[d.cls]||'#ccc'};font-size:0.9rem">${d.cls}</span><br>
+          <span style="color:#8a7a68">${d.count.toLocaleString()} institutions</span>
+        `;
+      })
+      .on("mouseleave", () => tooltip.style.opacity = "0");
+
+    classEls.append("circle")
+      .attr("r", d => d.r)
+      .attr("fill", d => CLASS_COLORS[d.cls] || "#4a4a4a")
+      .attr("fill-opacity", 0.95)
+      .attr("stroke", "#12100e")
+      .attr("stroke-width", 2);
+
+    classEls.append("text")
+      .text(d => d.cls)
+      .attr("text-anchor","middle")
+      .attr("dy","0.35em")
+      .attr("fill","#f0e8d8")
+      .attr("font-family","'Playfair Display', serif")
+      .attr("font-size", d => Math.max(7, Math.min(12, d.r * 0.52)) + "px")
+      .attr("pointer-events","none");
+
+    // ── tick ─────────────────────────────────────────────────
+    sim.on("tick", () => {
+      haloEls.attr("cx", d=>d.x).attr("cy", d=>d.y);
+      linkEls
+        .attr("x1", d=>d.source.x).attr("y1", d=>d.source.y)
+        .attr("x2", d=>d.target.x).attr("y2", d=>d.target.y);
+      libEls .attr("cx", d=>d.x).attr("cy", d=>d.y);
+      classEls.attr("transform", d=>`translate(${d.x},${d.y})`);
+    });
+
+  }, 100); // end setTimeout
+}
+
+
+fetch(GEOJSON_FILE)
+  .then(r=>{if(!r.ok) throw new Error(`Could not load ${GEOJSON_FILE} — ${r.status}`); return r.json();})
+  .then(geojson=>{
+    allFeatures=geojson.features;
+    buildLegend(allFeatures);
+    buildTotals(allFeatures);
+    buildPieChart(allFeatures);
+    buildListStates(allFeatures);
+    buildListStateVolumes(allFeatures);
+    buildListVolumes(allFeatures);
+    buildBarChart();
+    buildNetwork(allFeatures);
+    renderYear(1638);
+  })
+  .catch(err=>{
+    document.getElementById("map").innerHTML=
+      `<div style="padding:2rem;color:#b5522a;font-family:serif;">
+        <strong>Could not load data file.</strong><br><br>${err.message}<br><br>
+        Serve via a local server with <code>1876v1.geojson</code> in the same folder.
+      </div>`;
+    console.error(err);
+  });
+</script>
+</body>
+</html>

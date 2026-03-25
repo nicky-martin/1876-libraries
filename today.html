@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>American Libraries, Today</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:      #12100e;
+    --surface: #1c1916;
+    --border:  #3a3228;
+    --cream:   #e8dcc8;
+    --faded:   #8a7a68;
+    --gold:    #c9a84c;
+    --rust:    #b5522a;
+    --moss:    #6b8c5a;
+    --ink:     #f0e8d8;
+    --blue:    #5a7a8c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Libre Baskerville', serif;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  .site-nav {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .site-nav a {
+    color: var(--faded);
+    text-decoration: none;
+    padding: 0.4rem 1rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .site-nav a:hover { color: var(--cream); border-color: var(--border); }
+  .site-nav a.active {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.06);
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  header::after {
+    content: '';
+    display: block;
+    width: 40%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 1.25rem auto 0;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  header p {
+    font-style: italic;
+    color: var(--faded);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── PAGE WRAPPER ── */
+  .page-section {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 0;
+  }
+  .page-section.bottom { padding-bottom: 3rem; }
+  .section-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1rem;
+  }
+
+  /* ── MAP ── */
+  #map {
+    width: 100%;
+    height: clamp(300px, 55vw, 520px);
+    border: 1px solid var(--border);
+    background: #1a1814;
+  }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--faded);
+    font-family: 'Libre Baskerville', serif;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { color: var(--cream); border-color: var(--cream); }
+  .filter-btn.active { color: var(--gold); border-color: var(--gold); background: rgba(201,168,76,0.08); }
+  .filter-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 0.35rem;
+    vertical-align: middle;
+  }
+  .count-display {
+    font-size: 0.75rem;
+    color: var(--faded);
+    font-style: italic;
+    white-space: nowrap;
+    margin-left: auto;
+  }
+  .count-display span { color: var(--cream); font-style: normal; }
+
+  /* ── LEGEND ── */
+  .legend-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: none;
+    padding: 0.65rem 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    color: var(--faded);
+  }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── TOTALS ── */
+  .totals-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+  .total-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem 1.25rem;
+    position: relative;
+    text-align: center;
+  }
+  .total-card::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .total-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--faded);
+    margin-bottom: 0.5rem;
+  }
+  .total-number {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 4vw, 2.4rem);
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .total-sub {
+    font-size: 0.62rem;
+    color: var(--faded);
+    font-style: italic;
+    margin-top: 0.4rem;
+  }
+
+  /* ── PIE ── */
+  .pie-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.75rem 2rem;
+    position: relative;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 2.5rem;
+    align-items: center;
+    margin-top: 1rem;
+  }
+  .pie-panel::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .pie-canvas-col {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 1 / 1;
+    position: relative;
+    margin: 0 auto;
+  }
+  .pie-canvas-col canvas {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    position: relative;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.2rem;
+  }
+  .panel-sub {
+    font-size: 0.68rem;
+    font-style: italic;
+    color: var(--faded);
+    margin-bottom: 1.1rem;
+  }
+  .panel-divider {
+    height: 1px;
+    background: linear-gradient(to right, var(--gold), transparent);
+    margin-bottom: 1.1rem;
+    opacity: 0.4;
+  }
+
+  /* ── LISTS GRID ── */
+  .lists-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+
+  /* ── RANKED LISTS ── */
+  .ranked-list { list-style: none; }
+  .ranked-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.48rem 0;
+    border-bottom: 1px solid rgba(58,50,40,0.55);
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+  .ranked-list li:last-child { border-bottom: none; }
+  .rank-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.66rem;
+    color: var(--gold);
+    opacity: 0.6;
+    min-width: 1.1rem;
+    text-align: right;
+    flex-shrink: 0;
+    padding-top: 0.05rem;
+  }
+  .rank-name { flex: 1; color: var(--cream); min-width: 0; }
+  .rank-detail {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--faded);
+    font-style: italic;
+    margin-top: 0.1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rank-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.75rem;
+    color: var(--gold);
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding-top: 0.05rem;
+  }
+  .rank-bar-bg {
+    display: block;
+    height: 2px;
+    background: rgba(201,168,76,0.12);
+    border-radius: 1px;
+    overflow: hidden;
+    margin-top: 0.28rem;
+  }
+  .rank-bar-fill {
+    display: block;
+    height: 100%;
+    background: var(--gold);
+    opacity: 0.4;
+    border-radius: 1px;
+  }
+
+  canvas { max-width: 100%; }
+
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--faded);
+    font-style: italic;
+    letter-spacing: 0.03em;
+    margin-top: 3rem;
+  }
+
+  /* ── LEAFLET OVERRIDES ── */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    color: var(--cream);
+    font-family: 'Libre Baskerville', serif;
+    font-size: 0.78rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  }
+  .leaflet-popup-tip { background: var(--surface); }
+  .popup-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    color: var(--ink);
+    margin-bottom: 0.3rem;
+    line-height: 1.2;
+  }
+  .popup-meta { color: var(--faded); font-size: 0.7rem; margin-top: 0.2rem; }
+  .popup-meta span { color: var(--cream); }
+  .leaflet-control-zoom a {
+    background: var(--surface) !important;
+    color: var(--cream) !important;
+    border-color: var(--border) !important;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .totals-row { grid-template-columns: repeat(2, 1fr); }
+    .lists-grid { grid-template-columns: 1fr; }
+    .pie-panel { grid-template-columns: 200px 1fr; gap: 1.5rem; }
+  }
+  @media (max-width: 600px) {
+    .totals-row { grid-template-columns: 1fr; }
+    .pie-panel { grid-template-columns: 1fr; }
+    .pie-canvas-col { max-width: 280px; }
+    .page-section { padding-left: 1rem; padding-right: 1rem; }
+    .filter-bar { gap: 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="site-nav">
+  <a href="index.html">1876</a>
+  <a href="today.html" class="active">Today</a>
+</nav>
+
+<header>
+  <h1>American Libraries, Today</h1>
+  <p>IMLS Public Libraries Survey FY 2023 &amp; IPEDS Academic Libraries FY 2024</p>
+</header>
+
+<!-- § I MAP -->
+<div class="page-section">
+  <div class="section-label">§ I &mdash; Geographic Distribution</div>
+  <div id="map"></div>
+  <div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="public"><span class="filter-dot" style="background:#6b8c5a"></span>Public</button>
+    <button class="filter-btn" data-filter="academic"><span class="filter-dot" style="background:#c9a84c"></span>Academic</button>
+    <div class="count-display">Showing <span id="visible-count">&mdash;</span> of <span id="total-count">&mdash;</span> libraries</div>
+  </div>
+  <div class="legend-wrap">
+    <div class="legend-item"><div class="legend-dot" style="background:#6b8c5a"></div>Public &mdash; Central Library</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#b5522a"></div>Public &mdash; Branch</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#5a7a8c"></div>Public &mdash; Bookmobile</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c9a84c"></div>Academic Library</div>
+  </div>
+</div>
+
+<!-- § II TOTALS -->
+<div class="page-section" style="margin-top:2.5rem;">
+  <div class="section-label">§ II &mdash; Aggregate Totals</div>
+  <div class="totals-row">
+    <div class="total-card">
+      <div class="total-label">Total Library Locations</div>
+      <div class="total-number" id="stat-total">—</div>
+      <div class="total-sub">centrals, branches, bookmobiles &amp; academic</div>
+    </div>
+    <div class="total-card">
+      <div class="total-label">Public Library Locations</div>
+      <div class="total-number" id="stat-public">—</div>
+      <div class="total-sub">from 9,208 library systems</div>
+    </div>
+    <div class="total-card">
+      <div class="total-label">Academic Libraries</div>
+      <div class="total-number" id="stat-academic">—</div>
+      <div class="total-sub">degree-granting institutions</div>
+    </div>
+    <div class="total-card">
+      <div class="total-label">Physical Books Held</div>
+      <div class="total-number" id="stat-books">—</div>
+      <div class="total-sub">public &amp; academic combined</div>
+    </div>
+  </div>
+</div>
+
+<!-- § III PIE -->
+<div class="page-section" style="margin-top:2.5rem;">
+  <div class="section-label">§ III &mdash; Libraries by Type</div>
+  <div class="pie-panel">
+    <div class="pie-text-col">
+      <div class="panel-title">Composition of American Libraries</div>
+      <div class="panel-sub">All 21,029 locations, by type</div>
+      <div style="height:1px;background:linear-gradient(to right,var(--gold),transparent);margin:1rem 0;opacity:0.4;"></div>
+      <div style="font-size:0.7rem;color:var(--faded);line-height:2.2;" id="pie-legend-text"></div>
+    </div>
+    <div class="pie-canvas-col">
+      <canvas id="pie-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- § IV RANKINGS -->
+<div class="page-section bottom" style="margin-top:2.5rem;">
+  <div class="section-label">§ IV &mdash; Rankings</div>
+  <div class="lists-grid">
+    <div class="panel">
+      <div class="panel-title">Top States by Library Count</div>
+      <div class="panel-sub">All library locations — public outlets &amp; academic</div>
+      <div class="panel-divider"></div>
+      <ul class="ranked-list" id="list-states"></ul>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Largest Institutional Collections</div>
+      <div class="panel-sub">Public &amp; academic — total volumes (physical + electronic)</div>
+      <div class="panel-divider"></div>
+      <ul class="ranked-list" id="list-largest"></ul>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Data: IMLS Public Libraries Survey, FY 2023 &bull; IPEDS Academic Libraries, FY 2024.<br>
+  50 states &amp; the District of Columbia. Built with Leaflet.js &amp; Chart.js.
+</footer>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// STATE LOOKUP
+// ══════════════════════════════════════════════════════════════
+const STATE_NAMES = {
+  AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",
+  CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"Dist. of Columbia",
+  FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",
+  IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",
+  ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",
+  MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",
+  NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",
+  NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",
+  OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",
+  SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",
+  VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"
+};
+function stateName(abbr) { return STATE_NAMES[abbr] || abbr; }
+function titleCase(s) {
+  if (!s) return s;
+  return s.toLowerCase().replace(/(?:^|\s|[-/])\w/g, m => m.toUpperCase());
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════
+const GEOJSON_FILE = "us_libraries.geojson";
+
+const TYPE_COLORS = {
+  "Central Library":  "#6b8c5a",   // moss green
+  "Branch":           "#b5522a",   // rust
+  "Bookmobile":       "#5a7a8c",   // slate blue
+  "Academic Library":  "#c9a84c",  // gold
+};
+
+// ══════════════════════════════════════════════════════════════
+// MAP
+// ══════════════════════════════════════════════════════════════
+const US_BOUNDS = L.latLngBounds(L.latLng(24.0,-125.0), L.latLng(50.0,-66.0));
+const map = L.map('map', {
+  center: [39.5, -96], zoom: 4, minZoom: 4, maxZoom: 18,
+  maxBounds: US_BOUNDS, maxBoundsViscosity: 1.0, zoomControl: true,
+});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19,
+}).addTo(map);
+
+let allFeatures = [], activeFilter = "all";
+let markerLayer = L.layerGroup().addTo(map);
+
+// Use default renderer (SVG) — canvas renderer caused rendering issues
+function makeMarker(f) {
+  const p = f.properties;
+  const color = TYPE_COLORS[p.outlet_type] || "#6b8c5a";
+  const radius = p.library_type === "academic" ? 5 : 4;
+
+  const m = L.circleMarker(
+    [f.geometry.coordinates[1], f.geometry.coordinates[0]],
+    { radius, fillColor: color, color: "rgba(0,0,0,0.3)", weight: 0.4, fillOpacity: 0.85 }
+  );
+
+  const name = titleCase(p.name);
+  const city = titleCase(p.city);
+  const collectionStr = p.collection ? p.collection.toLocaleString() + " volumes" : "";
+
+  m.bindPopup(`
+    <div class="popup-name">${name}</div>
+    <div class="popup-meta"><span>${city}, ${stateName(p.state)}</span></div>
+    <div class="popup-meta">Type: <span>${p.outlet_type}</span></div>
+    ${collectionStr ? `<div class="popup-meta">Collection: <span>${collectionStr}</span></div>` : ""}
+  `);
+  return m;
+}
+
+function renderMap() {
+  markerLayer.clearLayers();
+  const filtered = allFeatures.filter(f => {
+    const p = f.properties;
+    return activeFilter === "all" || activeFilter === p.library_type;
+  });
+  document.getElementById("visible-count").textContent = filtered.length.toLocaleString();
+
+  // Add markers in chunks to avoid blocking the UI
+  const CHUNK = 2000;
+  let i = 0;
+  function addChunk() {
+    const end = Math.min(i + CHUNK, filtered.length);
+    for (; i < end; i++) {
+      makeMarker(filtered[i]).addTo(markerLayer);
+    }
+    if (i < filtered.length) {
+      requestAnimationFrame(addChunk);
+    }
+  }
+  addChunk();
+}
+
+// Filter buttons
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    renderMap();
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// TOTALS
+// ══════════════════════════════════════════════════════════════
+// Hardcoded from the pipeline output (system-level totals)
+const NATIONAL = {
+  pubPhysical:  650_472_963,
+  acadPhysical: 665_046_542,
+  pubEbooks:    1_498_159_385,
+  acadEbooks:   1_732_915_400,
+};
+
+function buildTotals(features) {
+  const pub = features.filter(f => f.properties.library_type === "public").length;
+  const acad = features.filter(f => f.properties.library_type === "academic").length;
+  const total = features.length;
+
+  document.getElementById("stat-total").textContent = total.toLocaleString();
+  document.getElementById("stat-public").textContent = pub.toLocaleString();
+  document.getElementById("stat-academic").textContent = acad.toLocaleString();
+  document.getElementById("total-count").textContent = total.toLocaleString();
+
+  const totalPhysical = NATIONAL.pubPhysical + NATIONAL.acadPhysical;
+  // Format as "1.32 billion"
+  document.getElementById("stat-books").textContent =
+    (totalPhysical / 1_000_000_000).toFixed(2) + "B";
+}
+
+// ══════════════════════════════════════════════════════════════
+// PIE CHART — by outlet type
+// ══════════════════════════════════════════════════════════════
+function buildPieChart(features) {
+  const counts = {};
+  features.forEach(f => {
+    const t = f.properties.outlet_type;
+    counts[t] = (counts[t] || 0) + 1;
+  });
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const labels = entries.map(e => e[0]);
+  const data = entries.map(e => e[1]);
+  const colors = labels.map(l => TYPE_COLORS[l] || "#4a4a4a");
+  const total = data.reduce((a, b) => a + b, 0);
+
+  document.getElementById("pie-legend-text").innerHTML = entries.map(([cls, n]) =>
+    `<span style="color:${TYPE_COLORS[cls] || '#4a4a4a'}">■</span> ${cls}: <strong style="color:var(--cream)">${n.toLocaleString()}</strong> <span style="opacity:0.6">(${(n / total * 100).toFixed(1)}%)</span>`
+  ).join("<br>");
+
+  new Chart(document.getElementById("pie-chart"), {
+    type: "doughnut",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: "#12100e", borderWidth: 1.5 }] },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed / total * 100).toFixed(1)}%)` } }
+      },
+      animation: { animateRotate: true, duration: 800 },
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// RANKED LIST BUILDER (reused from 1876)
+// ══════════════════════════════════════════════════════════════
+function buildRankedList(ulId, items, maxVal) {
+  const ul = document.getElementById(ulId); ul.innerHTML = "";
+  items.forEach((item, i) => {
+    const pct = Math.round((item.value / maxVal) * 100);
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="rank-num">${i + 1}</span>
+      <span class="rank-name">
+        ${item.label}
+        ${item.detail ? `<span class="rank-detail">${item.detail}</span>` : ""}
+        <span class="rank-bar-bg"><span class="rank-bar-fill" style="width:${pct}%"></span></span>
+      </span>
+      <span class="rank-value">${item.display}</span>
+    `;
+    ul.appendChild(li);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIST: STATES BY COUNT (15)
+// ══════════════════════════════════════════════════════════════
+function buildListStates(features) {
+  const counts = {};
+  features.forEach(f => { const s = f.properties.state; counts[s] = (counts[s] || 0) + 1; });
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
+  const max = sorted[0]?.[1] || 1;
+  buildRankedList("list-states", sorted.map(([abbr, n]) => ({
+    label: stateName(abbr), value: n, display: n.toLocaleString()
+  })), max);
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIST: LARGEST INSTITUTIONAL COLLECTIONS (15)
+// Hardcoded from PLS FY2023 AE (BKVOL+EBOOK) and IPEDS FY2024
+// AL (LPBOOKS+LEBOOKS), verified against source CSVs
+// ══════════════════════════════════════════════════════════════
+const TOP_COLLECTIONS = [
+  { name:"New York Public Library, The Branch Libraries", city:"New York", state:"NY", collection:26616699, library_type:"public" },
+  { name:"Harvard University",                           city:"Cambridge", state:"MA", collection:18692293, library_type:"academic" },
+  { name:"Columbia University in the City of New York",  city:"New York", state:"NY", collection:15280270, library_type:"academic" },
+  { name:"The University of Texas at San Antonio",       city:"San Antonio", state:"TX", collection:11632192, library_type:"academic" },
+  { name:"Yale University",                              city:"New Haven", state:"CT", collection:11628617, library_type:"academic" },
+  { name:"University of Michigan-Ann Arbor",             city:"Ann Arbor", state:"MI", collection:10601490, library_type:"academic" },
+  { name:"University of California-Berkeley",            city:"Berkeley", state:"CA", collection:10528300, library_type:"academic" },
+  { name:"Princeton University",                         city:"Princeton", state:"NJ", collection:10175439, library_type:"academic" },
+  { name:"Stanford University",                          city:"Stanford", state:"CA", collection:10099842, library_type:"academic" },
+  { name:"Michigan State University",                    city:"East Lansing", state:"MI", collection:9150236, library_type:"academic" },
+  { name:"University of Chicago",                        city:"Chicago", state:"IL", collection:8725241, library_type:"academic" },
+  { name:"University of Pennsylvania",                   city:"Philadelphia", state:"PA", collection:8720782, library_type:"academic" },
+  { name:"University of Wisconsin-Madison",              city:"Madison", state:"WI", collection:8678737, library_type:"academic" },
+  { name:"University of Illinois Urbana-Champaign",      city:"Champaign", state:"IL", collection:8431307, library_type:"academic" },
+  { name:"Boston Public Library",                        city:"Boston", state:"MA", collection:7467463, library_type:"public" },
+];
+
+function buildListLargest() {
+  const max = TOP_COLLECTIONS[0].collection;
+  const typeLabel = { "public": "Public", "academic": "Academic" };
+  buildRankedList("list-largest", TOP_COLLECTIONS.map(item => ({
+    label: item.name,
+    detail: `${item.city}, ${stateName(item.state)} · ${typeLabel[item.library_type]}`,
+    value: item.collection,
+    display: item.collection.toLocaleString(),
+  })), max);
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOAD & GO
+// ══════════════════════════════════════════════════════════════
+fetch(GEOJSON_FILE)
+  .then(r => {
+    if (!r.ok) throw new Error(`Could not load ${GEOJSON_FILE} — ${r.status}`);
+    return r.json();
+  })
+  .then(geojson => {
+    allFeatures = geojson.features;
+    buildTotals(allFeatures);
+    buildPieChart(allFeatures);
+    buildListStates(allFeatures);
+    buildListLargest();
+    renderMap();
+  })
+  .catch(err => {
+    document.getElementById("map").innerHTML =
+      `<div style="padding:2rem;color:#b5522a;font-family:serif;">
+        <strong>Could not load data file.</strong><br><br>${err.message}<br><br>
+        Make sure <code>us_libraries.geojson</code> is in the same folder and serve via a local server.
+      </div>`;
+    console.error(err);
+  });
+</script>
+</body>
+</html>
