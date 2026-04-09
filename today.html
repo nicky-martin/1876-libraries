@@ -132,6 +132,7 @@
     padding: 0.4rem 0.9rem;
     cursor: pointer;
     transition: all 0.15s;
+    user-select: none;
   }
   .filter-btn:hover { color: var(--cream); border-color: var(--cream); }
   .filter-btn.active { color: var(--gold); border-color: var(--gold); background: rgba(201,168,76,0.08); }
@@ -234,7 +235,7 @@
   .pie-canvas-col {
     width: 100%;
     max-width: 400px;
-    aspect-ratio: 1 / 1;
+    height: 280px;
     position: relative;
     margin: 0 auto;
   }
@@ -286,6 +287,16 @@
     grid-template-columns: 1fr 1fr;
     gap: 1.25rem;
     margin-top: 1rem;
+    align-items: stretch;
+  }
+  .lists-grid .panel {
+    display: flex;
+    flex-direction: column;
+  }
+  .lists-grid .ranked-list {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 
   /* ── RANKED LISTS ── */
@@ -343,6 +354,12 @@
     background: var(--gold);
     opacity: 0.4;
     border-radius: 1px;
+  }
+
+  /* ── BAR CHART CONTAINER ── */
+  .bar-chart-wrap {
+    position: relative;
+    height: 632px; /* 15 bars × 38px + 62px padding */
   }
 
   canvas { max-width: 100%; }
@@ -405,6 +422,7 @@
 <nav class="site-nav">
   <a href="index.html">1876</a>
   <a href="today.html" class="active">Today</a>
+  <a href="works-cited.html">Works Cited</a>
 </nav>
 
 <header>
@@ -473,22 +491,27 @@
   </div>
 </div>
 
-<!-- § IV RANKINGS -->
+<!-- § IV BAR CHART — largest collections -->
+<div class="page-section" style="margin-top:2.5rem;">
+  <div class="section-label">§ IV &mdash; Largest Collections by Physical Volumes</div>
+  <div class="panel">
+    <div class="panel-title">Top 15 Libraries by Physical Books Held</div>
+    <div class="panel-sub">Public (IMLS PLS FY2023 <code>BKVOL</code>) &amp; academic (IPEDS AL FY2024 <code>LPBOOKS</code>) — physical books only</div>
+    <div class="panel-divider"></div>
+    <div class="bar-chart-wrap">
+      <canvas id="collections-bar"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- § V STATE RANKINGS -->
 <div class="page-section bottom" style="margin-top:2.5rem;">
-  <div class="section-label">§ IV &mdash; Rankings</div>
-  <div class="lists-grid">
-    <div class="panel">
-      <div class="panel-title">Top States by Library Count</div>
-      <div class="panel-sub">All library locations — public outlets &amp; academic</div>
-      <div class="panel-divider"></div>
-      <ul class="ranked-list" id="list-states"></ul>
-    </div>
-    <div class="panel">
-      <div class="panel-title">Largest Institutional Collections</div>
-      <div class="panel-sub">Public &amp; academic — total volumes (physical + electronic)</div>
-      <div class="panel-divider"></div>
-      <ul class="ranked-list" id="list-largest"></ul>
-    </div>
+  <div class="section-label">§ V &mdash; Library Locations by State</div>
+  <div class="panel">
+    <div class="panel-title">All States &amp; D.C. by Library Count</div>
+    <div class="panel-sub">Public outlets &amp; academic libraries combined</div>
+    <div class="panel-divider"></div>
+    <ul class="ranked-list" id="list-states"></ul>
   </div>
 </div>
 
@@ -498,9 +521,6 @@
 </footer>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-// STATE LOOKUP
-// ══════════════════════════════════════════════════════════════
 const STATE_NAMES = {
   AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",
   CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"Dist. of Columbia",
@@ -520,21 +540,16 @@ function titleCase(s) {
   return s.toLowerCase().replace(/(?:^|\s|[-/])\w/g, m => m.toUpperCase());
 }
 
-// ══════════════════════════════════════════════════════════════
-// CONFIG
-// ══════════════════════════════════════════════════════════════
 const GEOJSON_FILE = "us_libraries.geojson";
 
 const TYPE_COLORS = {
-  "Central Library":  "#6b8c5a",   // moss green
-  "Branch":           "#b5522a",   // rust
-  "Bookmobile":       "#5a7a8c",   // slate blue
-  "Academic Library":  "#c9a84c",  // gold
+  "Central Library":  "#6b8c5a",
+  "Branch":           "#b5522a",
+  "Bookmobile":       "#5a7a8c",
+  "Academic Library": "#c9a84c",
 };
 
-// ══════════════════════════════════════════════════════════════
-// MAP
-// ══════════════════════════════════════════════════════════════
+// ── MAP ──────────────────────────────────────────────────────
 const US_BOUNDS = L.latLngBounds(L.latLng(24.0,-125.0), L.latLng(50.0,-66.0));
 const map = L.map('map', {
   center: [39.5, -96], zoom: 4, minZoom: 4, maxZoom: 18,
@@ -548,51 +563,71 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
 let allFeatures = [], activeFilter = "all";
 let markerLayer = L.layerGroup().addTo(map);
 
-// Use default renderer (SVG) — canvas renderer caused rendering issues
-function makeMarker(f) {
+function makeMarker(f, dimmed) {
   const p = f.properties;
   const color = TYPE_COLORS[p.outlet_type] || "#6b8c5a";
   const radius = p.library_type === "academic" ? 5 : 4;
+  const opacity = dimmed ? 0.10 : 0.85;
 
   const m = L.circleMarker(
     [f.geometry.coordinates[1], f.geometry.coordinates[0]],
-    { radius, fillColor: color, color: "rgba(0,0,0,0.3)", weight: 0.4, fillOpacity: 0.85 }
+    {
+      radius,
+      fillColor: color,
+      color: dimmed ? "rgba(0,0,0,0.05)" : "rgba(0,0,0,0.3)",
+      weight: 0.4,
+      fillOpacity: opacity,
+      opacity: dimmed ? 0.05 : 1,
+    }
   );
 
-  const name = titleCase(p.name);
-  const city = titleCase(p.city);
-  const collectionStr = p.collection ? p.collection.toLocaleString() + " volumes" : "";
-
-  m.bindPopup(`
-    <div class="popup-name">${name}</div>
-    <div class="popup-meta"><span>${city}, ${stateName(p.state)}</span></div>
-    <div class="popup-meta">Type: <span>${p.outlet_type}</span></div>
-    ${collectionStr ? `<div class="popup-meta">Collection: <span>${collectionStr}</span></div>` : ""}
-  `);
+  if (!dimmed) {
+    const name = titleCase(p.name);
+    const city = titleCase(p.city);
+    const collectionStr = p.collection ? p.collection.toLocaleString() + " volumes" : "";
+    m.bindPopup(`
+      <div class="popup-name">${name}</div>
+      <div class="popup-meta"><span>${city}, ${stateName(p.state)}</span></div>
+      <div class="popup-meta">Type: <span>${p.outlet_type}</span></div>
+      ${collectionStr ? `<div class="popup-meta">Collection: <span>${collectionStr}</span></div>` : ""}
+    `);
+  }
   return m;
 }
 
 function renderMap() {
   markerLayer.clearLayers();
-  const filtered = allFeatures.filter(f => {
-    const p = f.properties;
-    return activeFilter === "all" || activeFilter === p.library_type;
-  });
-  document.getElementById("visible-count").textContent = filtered.length.toLocaleString();
+  const total = allFeatures.length;
 
-  // Add markers in chunks to avoid blocking the UI
-  const CHUNK = 2000;
-  let i = 0;
-  function addChunk() {
-    const end = Math.min(i + CHUNK, filtered.length);
-    for (; i < end; i++) {
-      makeMarker(filtered[i]).addTo(markerLayer);
+  if (activeFilter === "all") {
+    const CHUNK = 2000;
+    let i = 0;
+    function addChunk() {
+      const end = Math.min(i + CHUNK, allFeatures.length);
+      for (; i < end; i++) makeMarker(allFeatures[i], false).addTo(markerLayer);
+      if (i < allFeatures.length) requestAnimationFrame(addChunk);
     }
-    if (i < filtered.length) {
-      requestAnimationFrame(addChunk);
+    addChunk();
+    document.getElementById("visible-count").textContent = total.toLocaleString();
+  } else {
+    const dimmed    = allFeatures.filter(f => f.properties.library_type !== activeFilter);
+    const highlight = allFeatures.filter(f => f.properties.library_type === activeFilter);
+
+    let i = 0;
+    const all = [...dimmed, ...highlight];
+    function addChunk() {
+      const CHUNK = 2000;
+      const end = Math.min(i + CHUNK, all.length);
+      for (; i < end; i++) {
+        const isDimmed = i < dimmed.length;
+        makeMarker(all[i], isDimmed).addTo(markerLayer);
+      }
+      if (i < all.length) requestAnimationFrame(addChunk);
     }
+    addChunk();
+    document.getElementById("visible-count").textContent =
+      highlight.length.toLocaleString() + " highlighted";
   }
-  addChunk();
 }
 
 // Filter buttons
@@ -605,36 +640,25 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
   });
 });
 
-// ══════════════════════════════════════════════════════════════
-// TOTALS
-// ══════════════════════════════════════════════════════════════
-// Hardcoded from the pipeline output (system-level totals)
+// ── TOTALS ───────────────────────────────────────────────────
 const NATIONAL = {
   pubPhysical:  650_472_963,
   acadPhysical: 665_046_542,
-  pubEbooks:    1_498_159_385,
-  acadEbooks:   1_732_915_400,
 };
 
 function buildTotals(features) {
-  const pub = features.filter(f => f.properties.library_type === "public").length;
+  const pub  = features.filter(f => f.properties.library_type === "public").length;
   const acad = features.filter(f => f.properties.library_type === "academic").length;
-  const total = features.length;
-
-  document.getElementById("stat-total").textContent = total.toLocaleString();
-  document.getElementById("stat-public").textContent = pub.toLocaleString();
+  document.getElementById("stat-total").textContent    = features.length.toLocaleString();
+  document.getElementById("stat-public").textContent   = pub.toLocaleString();
   document.getElementById("stat-academic").textContent = acad.toLocaleString();
-  document.getElementById("total-count").textContent = total.toLocaleString();
-
+  document.getElementById("total-count").textContent   = features.length.toLocaleString();
   const totalPhysical = NATIONAL.pubPhysical + NATIONAL.acadPhysical;
-  // Format as "1.32 billion"
   document.getElementById("stat-books").textContent =
     (totalPhysical / 1_000_000_000).toFixed(2) + "B";
 }
 
-// ══════════════════════════════════════════════════════════════
-// PIE CHART — by outlet type
-// ══════════════════════════════════════════════════════════════
+// ── PIE ──────────────────────────────────────────────────────
 function buildPieChart(features) {
   const counts = {};
   features.forEach(f => {
@@ -642,13 +666,13 @@ function buildPieChart(features) {
     counts[t] = (counts[t] || 0) + 1;
   });
   const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const labels = entries.map(e => e[0]);
-  const data = entries.map(e => e[1]);
-  const colors = labels.map(l => TYPE_COLORS[l] || "#4a4a4a");
-  const total = data.reduce((a, b) => a + b, 0);
+  const labels  = entries.map(e => e[0]);
+  const data    = entries.map(e => e[1]);
+  const colors  = labels.map(l => TYPE_COLORS[l] || "#4a4a4a");
+  const total   = data.reduce((a, b) => a + b, 0);
 
   document.getElementById("pie-legend-text").innerHTML = entries.map(([cls, n]) =>
-    `<span style="color:${TYPE_COLORS[cls] || '#4a4a4a'}">■</span> ${cls}: <strong style="color:var(--cream)">${n.toLocaleString()}</strong> <span style="opacity:0.6">(${(n / total * 100).toFixed(1)}%)</span>`
+    `<span style="color:${TYPE_COLORS[cls]||'#4a4a4a'}">■</span> ${cls}: <strong style="color:var(--cream)">${n.toLocaleString()}</strong> <span style="opacity:0.6">(${(n/total*100).toFixed(1)}%)</span>`
   ).join("<br>");
 
   new Chart(document.getElementById("pie-chart"), {
@@ -658,23 +682,21 @@ function buildPieChart(features) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed / total * 100).toFixed(1)}%)` } }
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed/total*100).toFixed(1)}%)` } }
       },
       animation: { animateRotate: true, duration: 800 },
     }
   });
 }
 
-// ══════════════════════════════════════════════════════════════
-// RANKED LIST BUILDER (reused from 1876)
-// ══════════════════════════════════════════════════════════════
+// ── RANKED LIST ──────────────────────────────────────────────
 function buildRankedList(ulId, items, maxVal) {
   const ul = document.getElementById(ulId); ul.innerHTML = "";
   items.forEach((item, i) => {
     const pct = Math.round((item.value / maxVal) * 100);
-    const li = document.createElement("li");
+    const li  = document.createElement("li");
     li.innerHTML = `
-      <span class="rank-num">${i + 1}</span>
+      <span class="rank-num">${i+1}</span>
       <span class="rank-name">
         ${item.label}
         ${item.detail ? `<span class="rank-detail">${item.detail}</span>` : ""}
@@ -686,61 +708,130 @@ function buildRankedList(ulId, items, maxVal) {
   });
 }
 
-// ══════════════════════════════════════════════════════════════
-// LIST: STATES BY COUNT (15)
-// ══════════════════════════════════════════════════════════════
 function buildListStates(features) {
   const counts = {};
-  features.forEach(f => { const s = f.properties.state; counts[s] = (counts[s] || 0) + 1; });
-  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15);
-  const max = sorted[0]?.[1] || 1;
-  buildRankedList("list-states", sorted.map(([abbr, n]) => ({
-    label: stateName(abbr), value: n, display: n.toLocaleString()
-  })), max);
+  features.forEach(f => { const s = f.properties.state; counts[s] = (counts[s]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const max = sorted[0]?.[1]||1;
+  const ul = document.getElementById("list-states");
+  ul.style.cssText = "display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0;";
+  ul.innerHTML = "";
+  sorted.forEach(([abbr, n], i) => {
+    const pct = Math.round((n / max) * 100);
+    const li = document.createElement("li");
+    li.style.cssText = "border-bottom:1px solid rgba(58,50,40,0.55);border-right:none;";
+    li.innerHTML = `
+      <span class="rank-num">${i+1}</span>
+      <span class="rank-name">
+        ${stateName(abbr)}
+        <span class="rank-bar-bg"><span class="rank-bar-fill" style="width:${pct}%"></span></span>
+      </span>
+      <span class="rank-value">${n.toLocaleString()}</span>
+    `;
+    ul.appendChild(li);
+  });
 }
 
-// ══════════════════════════════════════════════════════════════
-// LIST: LARGEST INSTITUTIONAL COLLECTIONS (15)
-// Hardcoded from PLS FY2023 AE (BKVOL+EBOOK) and IPEDS FY2024
-// AL (LPBOOKS+LEBOOKS), verified against source CSVs
-// ══════════════════════════════════════════════════════════════
+// ── LARGEST COLLECTIONS ───────────────────────────────────────
 const TOP_COLLECTIONS = [
-  { name:"New York Public Library, The Branch Libraries", city:"New York", state:"NY", collection:26616699, library_type:"public" },
-  { name:"Harvard University",                           city:"Cambridge", state:"MA", collection:18692293, library_type:"academic" },
-  { name:"Columbia University in the City of New York",  city:"New York", state:"NY", collection:15280270, library_type:"academic" },
-  { name:"The University of Texas at San Antonio",       city:"San Antonio", state:"TX", collection:11632192, library_type:"academic" },
-  { name:"Yale University",                              city:"New Haven", state:"CT", collection:11628617, library_type:"academic" },
-  { name:"University of Michigan-Ann Arbor",             city:"Ann Arbor", state:"MI", collection:10601490, library_type:"academic" },
-  { name:"University of California-Berkeley",            city:"Berkeley", state:"CA", collection:10528300, library_type:"academic" },
-  { name:"Princeton University",                         city:"Princeton", state:"NJ", collection:10175439, library_type:"academic" },
-  { name:"Stanford University",                          city:"Stanford", state:"CA", collection:10099842, library_type:"academic" },
-  { name:"Michigan State University",                    city:"East Lansing", state:"MI", collection:9150236, library_type:"academic" },
-  { name:"University of Chicago",                        city:"Chicago", state:"IL", collection:8725241, library_type:"academic" },
-  { name:"University of Pennsylvania",                   city:"Philadelphia", state:"PA", collection:8720782, library_type:"academic" },
-  { name:"University of Wisconsin-Madison",              city:"Madison", state:"WI", collection:8678737, library_type:"academic" },
-  { name:"University of Illinois Urbana-Champaign",      city:"Champaign", state:"IL", collection:8431307, library_type:"academic" },
-  { name:"Boston Public Library",                        city:"Boston", state:"MA", collection:7467463, library_type:"public" },
+  { name:"New York Public Library, The Branch Libraries",    city:"New York",     state:"NY", bkvol:25274848, library_type:"public"   },
+  { name:"Harvard University",                              city:"Cambridge",    state:"MA", bkvol:14950584, library_type:"academic" },
+  { name:"Columbia University in the City of New York",     city:"New York",     state:"NY", bkvol:11291356, library_type:"academic" },
+  { name:"Yale University",                                 city:"New Haven",    state:"CT", bkvol:9042536,  library_type:"academic" },
+  { name:"Boston Public Library",                           city:"Boston",       state:"MA", bkvol:7284427,  library_type:"public"   },
+  { name:"University of California-Berkeley",               city:"Berkeley",     state:"CA", bkvol:7174500,  library_type:"academic" },
+  { name:"Stanford University",                             city:"Stanford",     state:"CA", bkvol:6834778,  library_type:"academic" },
+  { name:"University of Kansas",                            city:"Lawrence",     state:"KS", bkvol:6377790,  library_type:"academic" },
+  { name:"Los Angeles Public Library",                      city:"Los Angeles",  state:"CA", bkvol:6263176,  library_type:"public"   },
+  { name:"University of Illinois Urbana-Champaign",         city:"Champaign",    state:"IL", bkvol:6058515,  library_type:"academic" },
+  { name:"University of Chicago",                           city:"Chicago",      state:"IL", bkvol:5798244,  library_type:"academic" },
+  { name:"Princeton University",                            city:"Princeton",    state:"NJ", bkvol:5636951,  library_type:"academic" },
+  { name:"University of Washington-Seattle Campus",         city:"Seattle",      state:"WA", bkvol:5597663,  library_type:"academic" },
+  { name:"Chicago Public Library",                          city:"Chicago",      state:"IL", bkvol:4925098,  library_type:"public"   },
+  { name:"Cincinnati and Hamilton County Public Library",   city:"Cincinnati",   state:"OH", bkvol:4238078,  library_type:"public"   },
 ];
 
 function buildListLargest() {
-  const max = TOP_COLLECTIONS[0].collection;
-  const typeLabel = { "public": "Public", "academic": "Academic" };
-  buildRankedList("list-largest", TOP_COLLECTIONS.map(item => ({
-    label: item.name,
-    detail: `${item.city}, ${stateName(item.state)} · ${typeLabel[item.library_type]}`,
-    value: item.collection,
-    display: item.collection.toLocaleString(),
-  })), max);
+  const labels  = TOP_COLLECTIONS.map(d => d.name);
+  const values  = TOP_COLLECTIONS.map(d => d.bkvol);
+  const colors  = TOP_COLLECTIONS.map(d =>
+    d.library_type === "public" ? "#6b8c5a" : "#c9a84c"
+  );
+
+  // Height is set on the .bar-chart-wrap parent div in CSS (632px).
+  // Chart.js reads from the parent — do NOT set canvas height here.
+  new Chart(document.getElementById("collections-bar"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 0,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.x.toLocaleString()} physical volumes`,
+            afterLabel: ctx => ` ${TOP_COLLECTIONS[ctx.dataIndex].city}, ${stateName(TOP_COLLECTIONS[ctx.dataIndex].state)} · ${TOP_COLLECTIONS[ctx.dataIndex].library_type === "public" ? "Public" : "Academic"}`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: "#8a7a68",
+            font: { family: "'Libre Baskerville', serif", size: 10 },
+            callback: val => (val / 1_000_000).toFixed(0) + "M",
+          },
+          grid: { color: "rgba(255,255,255,0.04)" },
+        },
+        y: {
+          ticks: {
+            color: "#e8dcc8",
+            font: { family: "'Libre Baskerville', serif", size: 11 },
+            callback: (val, i) => {
+              const name = labels[i];
+              return name.length > 38 ? name.slice(0, 36) + "…" : name;
+            }
+          },
+          grid: { display: false },
+        }
+      },
+      animation: { duration: 800 },
+    },
+    plugins: [{
+      id: "customLegend",
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        const x = chart.chartArea.right - 180;
+        const y = chart.chartArea.bottom + 28;
+        ctx.save();
+        ctx.fillStyle = "#6b8c5a";
+        ctx.fillRect(x, y, 10, 10);
+        ctx.fillStyle = "#8a7a68";
+        ctx.font = "10px 'Libre Baskerville', serif";
+        ctx.fillText("Public library", x + 14, y + 9);
+        ctx.fillStyle = "#c9a84c";
+        ctx.fillRect(x + 110, y, 10, 10);
+        ctx.fillStyle = "#8a7a68";
+        ctx.fillText("Academic library", x + 124, y + 9);
+        ctx.restore();
+      }
+    }]
+  });
 }
 
-// ══════════════════════════════════════════════════════════════
-// LOAD & GO
-// ══════════════════════════════════════════════════════════════
+// ── LOAD ─────────────────────────────────────────────────────
 fetch(GEOJSON_FILE)
-  .then(r => {
-    if (!r.ok) throw new Error(`Could not load ${GEOJSON_FILE} — ${r.status}`);
-    return r.json();
-  })
+  .then(r => { if(!r.ok) throw new Error(`Could not load ${GEOJSON_FILE} — ${r.status}`); return r.json(); })
   .then(geojson => {
     allFeatures = geojson.features;
     buildTotals(allFeatures);
