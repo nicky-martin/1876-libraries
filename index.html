@@ -685,7 +685,7 @@ const CLASS_COLORS = {
 // ══════════════════════════════════════════════════════════════
 const US_BOUNDS = L.latLngBounds(L.latLng(24.0,-125.0), L.latLng(50.0,-66.0));
 const map = L.map('map', {
-  center:[39.5,-98], zoom:window.innerWidth < 600 ? 3 : 4, minZoom:3, maxZoom:18,
+  center:[39.5,-96], zoom:4, minZoom:4, maxZoom:18,
   maxBounds:US_BOUNDS, maxBoundsViscosity:1.0, zoomControl:true,
 });
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -693,7 +693,6 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd',
   maxZoom: 19,
 }).addTo(map);
-setTimeout(() => map.invalidateSize(), 200);
 
 let allFeatures=[], markers=L.layerGroup().addTo(map);
 let playTimeout=null, isPlaying=false;
@@ -1168,29 +1167,254 @@ function buildNetwork(features) {
 }
 
 
-fetch(GEOJSON_FILE)
-  .then(r=>{if(!r.ok) throw new Error(`Could not load ${GEOJSON_FILE} — ${r.status}`); return r.json();})
-  .then(geojson=>{
-    allFeatures=geojson.features;
-    buildLegend(allFeatures);
-    buildTotals(allFeatures);
-    buildPieChart(allFeatures);
-    buildListStates(allFeatures);
-    buildListStateVolumes(allFeatures);
-    buildListVolumes(allFeatures);
-    buildBarChart();
-    buildNetwork(allFeatures);
-    // Default: show all 1876 data
-    renderYear(1876);
-  })
-  .catch(err=>{
-    document.getElementById("map").innerHTML=
-      `<div style="padding:2rem;color:#b5522a;font-family:serif;">
-        <strong>Could not load data file.</strong><br><br>${err.message}<br><br>
-        Serve via a local server with <code>1876v1.geojson</code> in the same folder.
-      </div>`;
-    console.error(err);
+// ══════════════════════════════════════════════════════════════
+// CSV PARSER — fixed-width column format from the 1876 survey
+// ══════════════════════════════════════════════════════════════
+const CSV_FILE = "goldenv1.csv";
+
+// Abbreviation → full class name (matches CLASS_COLORS keys)
+const CLASS_ABBR = {
+  "Acad":   "Academic", "Acad.":  "Academic", "Acad...": "Academic",
+  "Col":    "College",  "Col.":   "College",
+  "Soc'l":  "Social",   "Soc'l...": "Social",
+  "Pub":    "Public",   "Pub.":   "Public",
+  "Soc'y":  "Society",  "Soc'y...": "Society",
+  "A. & R.":"Atheneum & Reading Room", "A. & R": "Atheneum & Reading Room", "A. & R..": "Atheneum & Reading Room",
+  "Law":    "Law",
+  "Mis":    "Miscellaneous", "Mis.": "Miscellaneous",
+  "The'l":  "Theological", "The'l...": "Theological", "Theo'l": "Theological",
+  "Y.M.C.A": "Y.M.C.A.", "Y.M.C.A.": "Y.M.C.A.",
+  "Sch":    "School",
+  "Sci":    "Scientific", "Sei": "Scientific",
+  "Med":    "Medical",   "Med...": "Medical",
+  "Hist'l": "Historical", "His'l": "Historical", "Hist": "Historical",
+  "Hist'l..": "Historical", "Hist'l...": "Historical",
+  "Gar":    "Garrison / Military",
+  "State":  "State",
+  "Gov't":  "Government", "Gov't...": "Government",
+  "Mer":    "Mercantile",
+  "Ter":    "Territorial",
+  "H. & S.":"Historical & Scientific",
+  "Hist'l & soc'l.": "Historical & Scientific",
+};
+
+// State abbreviation from old-style suffixes like "Ala", "Cal", "N. Y.", etc.
+const STATE_ABBR_1876 = {
+  "Ala":"AL","Alaska":"AK","Ariz":"AZ","Ark":"AR","Cal":"CA","Colo":"CO",
+  "Conn":"CT","Del":"DE","D. C":"DC","D.C":"DC","Fla":"FL","Ga":"GA",
+  "Idaho":"ID","Ill":"IL","Ind":"IN","Iowa":"IA","Kans":"KS","Ky":"KY",
+  "La":"LA","Me":"ME","Md":"MD","Mass":"MA","Mich":"MI","Minn":"MN",
+  "Miss":"MS","Mo":"MO","Mont":"MT","Neb":"NE","Nev":"NV","N. H":"NH",
+  "N. J":"NJ","N. M":"NM","N. Y":"NY","N. C":"NC","N. D":"ND","Ohio":"OH",
+  "Okla":"OK","Ore":"OR","Pa":"PA","R. I":"RI","S. C":"SC","S. D":"SD",
+  "Tenn":"TN","Tex":"TX","Utah":"UT","Vt":"VT","Va":"VA","Wash":"WA",
+  "W. Va":"WV","Wis":"WI","Wyo":"WY",
+};
+
+function parseStateFrom1876Place(place) {
+  // place looks like "Auburn, Ala" or "New York, N. Y."
+  const parts = place.split(",");
+  if (parts.length < 2) return place.trim();
+  const rawState = parts[parts.length - 1].trim().replace(/\.+$/, "");
+  // Try direct lookup with trailing periods stripped
+  for (const [k, v] of Object.entries(STATE_ABBR_1876)) {
+    if (rawState.startsWith(k)) return v;
+  }
+  return rawState;
+}
+
+function parseCityFrom1876Place(place) {
+  const idx = place.indexOf(",");
+  return idx > -1 ? place.slice(0, idx).trim() : place.trim();
+}
+
+function parseCSV(text) {
+  const lines = text.split("\n").filter(l => l.trim());
+  const header = lines[0];
+  // Find fixed-width column boundaries from the header's comma positions
+  const commas = [];
+  for (let i = 0; i < header.length; i++) if (header[i] === ",") commas.push(i);
+  const cols = [0, ...commas.map(c => c + 1)];
+
+  function parseLine(line) {
+    const parts = [];
+    for (let i = 0; i < cols.length - 1; i++)
+      parts.push(line.slice(cols[i], cols[i+1] - 1).trim().replace(/^"|"$/g, ""));
+    parts.push(line.slice(cols[cols.length - 1]).trim().replace(/^"|"$/g, ""));
+    return parts;
+  }
+
+  return lines.slice(1).map(line => {
+    const p = parseLine(line);
+    const place    = p[1] || "";
+    const rawClass = (p[5] || "").trim();
+    const rawVols  = (p[6] || "").replace(/,/g, "").replace(/"/g, "").trim();
+    const rawYear  = (p[3] || "").trim();
+    const rawAccess= (p[4] || "").trim().toLowerCase();
+    return {
+      number:  p[0].trim(),
+      place,
+      name:    p[2].trim(),
+      year:    rawYear ? parseInt(rawYear) : null,
+      access:  rawAccess,         // "sub", "free", or ""
+      cls:     CLASS_ABBR[rawClass] || (rawClass || "Other"),
+      volumes: rawVols ? parseInt(rawVols) : null,
+      state:   parseStateFrom1876Place(place),
+      city:    parseCityFrom1876Place(place),
+    };
+  }).filter(r => r.name);
+}
+
+// ── STAT BUILDERS that take CSV rows (not geojson features) ──
+
+function buildTotalsFromCSV(rows) {
+  let v = 0;
+  rows.forEach(r => { if (r.volumes) v += r.volumes; });
+  document.getElementById("total-libraries").textContent = rows.length.toLocaleString();
+  document.getElementById("total-volumes").textContent   = v.toLocaleString();
+}
+
+function buildPieChartFromCSV(rows) {
+  const counts = {};
+  rows.forEach(r => { counts[r.cls] = (counts[r.cls] || 0) + 1; });
+  const entries = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  const labels  = entries.map(e => e[0]);
+  const data    = entries.map(e => e[1]);
+  const colors  = labels.map(l => CLASS_COLORS[l] || "#4a4a4a");
+  const total   = data.reduce((a,b) => a+b, 0);
+
+  document.getElementById("pie-legend-text").innerHTML = entries.map(([cls,n]) =>
+    `<span style="color:${CLASS_COLORS[cls]||'#4a4a4a'}">■</span> ${cls}: <strong style="color:var(--cream)">${n.toLocaleString()}</strong> <span style="opacity:0.6">(${(n/total*100).toFixed(1)}%)</span>`
+  ).join("<br>");
+
+  new Chart(document.getElementById("pie-chart"), {
+    type: "doughnut",
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: "#12100e", borderWidth: 1.5 }] },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()} (${(ctx.parsed/total*100).toFixed(1)}%)` } }
+      },
+      animation: { animateRotate: true, duration: 800 },
+    }
   });
+}
+
+function buildListStatesFromCSV(rows) {
+  const counts = {};
+  rows.forEach(r => { if (r.state) counts[r.state] = (counts[r.state]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const max = sorted[0]?.[1] || 1;
+  buildRankedList("list-states", sorted.map(([abbr,n]) => ({
+    label: stateName(abbr), value: n, display: n.toLocaleString()
+  })), max);
+}
+
+function buildListStateVolumesFromCSV(rows) {
+  const totals = {};
+  rows.forEach(r => { if (r.state && r.volumes) totals[r.state] = (totals[r.state]||0) + r.volumes; });
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const max = sorted[0]?.[1] || 1;
+  buildRankedList("list-state-volumes", sorted.map(([abbr,n]) => ({
+    label: stateName(abbr), value: n, display: n.toLocaleString()
+  })), max);
+}
+
+function buildListVolumesFromCSV(rows) {
+  const sorted = rows.filter(r => r.volumes).sort((a,b)=>b.volumes-a.volumes).slice(0,10);
+  const max = sorted[0]?.volumes || 1;
+  buildRankedList("list-volumes", sorted.map(r => ({
+    label:   r.name,
+    detail:  `${r.city}, ${stateName(r.state)} · ${r.cls}`,
+    value:   r.volumes,
+    display: r.volumes.toLocaleString(),
+  })), max);
+}
+
+function buildLegendFromCSV(rows) {
+  const counts = {};
+  rows.forEach(r => { counts[r.cls] = (counts[r.cls]||0)+1; });
+  const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+  const wrap = document.getElementById("legend"); wrap.innerHTML = "";
+
+  const hint = document.createElement("span");
+  hint.className = "legend-hint";
+  hint.textContent = "Click a type to filter — click again to show all";
+  wrap.appendChild(hint);
+
+  sorted.forEach(([cls, count]) => {
+    const color = CLASS_COLORS[cls] || CLASS_COLORS["Other"];
+    const item = document.createElement("div");
+    item.className = "legend-item";
+    item.style.color = color;
+    item.innerHTML = `<div class="legend-dot" style="background:${color}"></div><span style="color:var(--faded)">${cls} (${count})</span>`;
+    item.addEventListener("click", () => {
+      if (activeFilter === cls) {
+        activeFilter = null;
+        wrap.querySelectorAll(".legend-item").forEach(el => el.classList.remove("active","dimmed"));
+      } else {
+        activeFilter = cls;
+        wrap.querySelectorAll(".legend-item").forEach(el => {
+          el.classList.remove("active","dimmed");
+          if (el !== item) el.classList.add("dimmed");
+        });
+        item.classList.add("active");
+      }
+      renderYear(parseInt(slider.value));
+    });
+    wrap.appendChild(item);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOAD — CSV for stats, GeoJSON for map
+// ══════════════════════════════════════════════════════════════
+Promise.all([
+  fetch(CSV_FILE).then(r => { if(!r.ok) throw new Error(`Could not load ${CSV_FILE} — ${r.status}`); return r.text(); }),
+  fetch(GEOJSON_FILE).then(r => { if(!r.ok) throw new Error(`Could not load ${GEOJSON_FILE} — ${r.status}`); return r.json(); }),
+]).then(([csvText, geojson]) => {
+  const csvRows = parseCSV(csvText);
+
+  // Map uses GeoJSON (has coordinates)
+  allFeatures = geojson.features;
+
+  // Build map legend from GeoJSON classes (what's actually on the map)
+  buildLegendFromCSV(csvRows);
+
+  // All stats from the full CSV (3,649 records)
+  buildTotalsFromCSV(csvRows);
+  buildPieChartFromCSV(csvRows);
+  buildListStatesFromCSV(csvRows);
+  buildListStateVolumesFromCSV(csvRows);
+  buildListVolumesFromCSV(csvRows);
+
+  // Bar chart is hardcoded from original survey tables
+  buildBarChart();
+
+  // Network uses GeoJSON features (already has parsed class names)
+  buildNetwork(allFeatures);
+
+  // Map: show all 1876 data
+  renderYear(1876);
+
+  // Note on map about ungeocodable records
+  const missing = csvRows.length - allFeatures.length;
+  if (missing > 0) {
+    const note = document.createElement("div");
+    note.style.cssText = "font-size:0.62rem;color:var(--faded);font-style:italic;padding:0.4rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-top:none;";
+    note.innerHTML = `&#9432; ${missing.toLocaleString()} of ${csvRows.length.toLocaleString()} libraries could not be geocoded and do not appear on the map. All statistics reflect the full survey.`;
+    document.getElementById("legend").after(note);
+  }
+
+}).catch(err => {
+  document.getElementById("map").innerHTML =
+    `<div style="padding:2rem;color:#b5522a;font-family:serif;">
+      <strong>Could not load data file.</strong><br><br>${err.message}<br><br>
+      Serve via a local server with <code>1876v1.geojson</code> and <code>goldenv1.csv</code> in the same folder.
+    </div>`;
+  console.error(err);
+});
 </script>
 </body>
 </html>
