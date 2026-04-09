@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Works Cited — American Libraries, 1876</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Libre+Baskerville:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg:      #12100e;
+    --surface: #1c1916;
+    --border:  #3a3228;
+    --cream:   #e8dcc8;
+    --faded:   #8a7a68;
+    --gold:    #c9a84c;
+    --rust:    #b5522a;
+    --ink:     #f0e8d8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'Libre Baskerville', serif;
+    min-height: 100vh;
+  }
+
+  /* ── NAV ── */
+  .site-nav {
+    display: flex;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem 0;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .site-nav a {
+    color: var(--faded);
+    text-decoration: none;
+    padding: 0.4rem 1rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .site-nav a:hover { color: var(--cream); border-color: var(--border); }
+  .site-nav a.active {
+    color: var(--gold);
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.06);
+  }
+
+  /* ── HEADER ── */
+  header {
+    text-align: center;
+    padding: 2.5rem 1rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  header::after {
+    content: '';
+    display: block;
+    width: 40%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+    margin: 1.25rem auto 0;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.4rem, 4vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  header p {
+    font-style: italic;
+    color: var(--faded);
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── LAYOUT ── */
+  .page-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .section-label {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 2rem 2.5rem;
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(201,168,76,0.08);
+    pointer-events: none;
+  }
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+    margin-bottom: 0.3rem;
+  }
+  .panel-divider {
+    height: 1px;
+    background: linear-gradient(to right, var(--gold), transparent);
+    margin: 1rem 0 1.5rem;
+    opacity: 0.4;
+  }
+
+  /* ── REFERENCES ── */
+  .ref-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  .ref-item {
+    padding-left: 2rem;
+    text-indent: -2rem;
+    font-size: 0.82rem;
+    line-height: 1.75;
+    color: var(--cream);
+  }
+  .ref-item a {
+    color: var(--gold);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(201,168,76,0.3);
+    transition: border-color 0.15s;
+    word-break: break-all;
+  }
+  .ref-item a:hover {
+    border-color: var(--gold);
+  }
+
+  /* ── ACKNOWLEDGEMENTS ── */
+  .ack-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 2rem;
+  }
+  .ack-person {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid rgba(58,50,40,0.5);
+  }
+  .ack-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin-bottom: 0.15rem;
+  }
+  .ack-role {
+    font-size: 0.68rem;
+    color: var(--faded);
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  /* ── DATA NOTE ── */
+  .data-note {
+    font-size: 0.78rem;
+    color: var(--faded);
+    line-height: 1.8;
+    font-style: italic;
+  }
+  .data-note strong {
+    color: var(--cream);
+    font-style: normal;
+  }
+
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.65rem;
+    color: var(--faded);
+    font-style: italic;
+    letter-spacing: 0.03em;
+  }
+
+  @media (max-width: 600px) {
+    .panel { padding: 1.5rem 1.25rem; }
+    .ack-grid { grid-template-columns: 1fr; }
+    .page-section { padding: 2rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <a href="index.html">1876</a>
+  <a href="today.html">Today</a>
+  <a href="works-cited.html" class="active">Works Cited</a>
+</nav>
+
+<header>
+  <h1>Works Cited &amp; Acknowledgements</h1>
+  <p>American Libraries, 1876 and Today &mdash; Nicky Martin</p>
+</header>
+
+<div class="page-section">
+
+  <div class="section-label">§ I &mdash; References</div>
+
+  <div class="panel">
+    <div class="panel-title">Bibliography</div>
+    <div class="panel-divider"></div>
+    <ol class="ref-list">
+
+      <li class="ref-item">
+        Alphabet, Inc. (2026). <em>Google AI Studio</em> (Version Gemini Pro 3.1) [Computer software].
+        <a href="https://aistudio.google.com/" target="_blank" rel="noopener">https://aistudio.google.com/</a>
+      </li>
+
+      <li class="ref-item">
+        Dewey, M. (1876). American Library Journal, Vol. 1. <em>American Library Journal, 1876–1877, 1</em>(1).
+        <a href="https://digitalcommons.whitworth.edu/libraryjournal/1" target="_blank" rel="noopener">https://digitalcommons.whitworth.edu/libraryjournal/1</a>
+      </li>
+
+      <li class="ref-item">
+        Miksa, F. (1973). The making of the 1876 special report on public libraries. <em>Journal of Library History, Philosophy, and Comparative Librarianship, 8</em>(1), 30–40.
+      </li>
+
+      <li class="ref-item">
+        National Center for Education Statistics. (2024). <em>Integrated Postsecondary Education Data System.</em>
+        <a href="https://nces.ed.gov/ipeds/" target="_blank" rel="noopener">https://nces.ed.gov/ipeds/</a>
+      </li>
+
+      <li class="ref-item">
+        Public Libraries Survey (PLS). (n.d.). Retrieved April 8, 2026, from
+        <a href="http://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls" target="_blank" rel="noopener">http://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls</a>
+      </li>
+
+      <li class="ref-item">
+        United States. (1876). <em>Public libraries in the United States of America; their history, condition, and management.</em> Govt. print. off.
+        <a href="https://catalog.hathitrust.org/Record/001176093" target="_blank" rel="noopener">https://catalog.hathitrust.org/Record/001176093</a>
+      </li>
+
+      <li class="ref-item">
+        Wiegand, W. (2015). <em>Part of our lives: A people's history of the American public library.</em> Oxford University Press.
+      </li>
+
+    </ol>
+  </div>
+
+  <div class="section-label" style="margin-top:3rem;">§ II &mdash; Acknowledgements</div>
+
+  <div class="panel">
+    <div class="panel-title">With Thanks</div>
+    <div class="panel-divider"></div>
+    <div class="ack-grid">
+      <div class="ack-person">
+        <div class="ack-name">Glen Layne-Worthey</div>
+        <div class="ack-role">HathiTrust Research Center</div>
+      </div>
+      <div class="ack-person">
+        <div class="ack-name">Sara Goek</div>
+        <div class="ack-role">Public Library Association</div>
+      </div>
+      <div class="ack-person">
+        <div class="ack-name">Cara Bertram</div>
+        <div class="ack-role">ALA Archives</div>
+      </div>
+      <div class="ack-person">
+        <div class="ack-name">Chris Guerra</div>
+        <div class="ack-role">Arizona State Library</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:3rem;">§ III &mdash; Data &amp; Methods Note</div>
+
+  <div class="panel">
+    <div class="panel-title">On the Data</div>
+    <div class="panel-divider"></div>
+    <p class="data-note">
+      <strong>1876 data.</strong> The survey was managed by Commissioner of Education John Eaton, with data collection beginning in 1870 to document new libraries, their collections, and a guide to their holdings. The report also included Charles Cutter's cataloging rules, Melvil Dewey's classification schema, and the prospectus for the American Library Association. Statistician <strong>Mary E. McLellan</strong> is credited for compiling the statistical tables used in this analysis. PDFs were downloaded from HathiTrust, cleaned, cropped, and fed to Gemini 3.1 Pro with prompts requesting structured JSON output; outputs were spot-checked against original pages.
+    </p>
+    <br>
+    <p class="data-note">
+      <strong>Today's data.</strong> Contemporary data combines the 2023 Public Library Survey and 2024 Integrated Postsecondary Education Data System, covering public branches, bookmobiles, and academic libraries. Unlike the 1876 survey, modern federal efforts no longer collect data on private, subscription, military, government, or carceral libraries.
+    </p>
+    <br>
+    <p class="data-note">
+      <strong>Geocoding.</strong> Historic library locations were geocoded via Nominatim / OpenStreetMap contributors. Built with Leaflet.js, Chart.js, and D3.js.
+    </p>
+    <br>
+    <p class="data-note">
+      <strong>Future work</strong> includes replicating this workflow with open-source models, recovering 20th-century founding dates from Bowker's 1989 <em>Library Index</em>, linking historic institutions to contemporary federal identifiers, and overlaying the dataset with historical maps of railroads, schools, and postal expansion.
+    </p>
+  </div>
+
+</div>
+
+<footer>
+  Data: <em>Public Libraries in the United States of America</em>, Bureau of Education, 1876.
+  Geocoding via Nominatim / OpenStreetMap contributors.
+  Built with Leaflet.js &amp; Chart.js.
+</footer>
+
+</body>
+</html>
