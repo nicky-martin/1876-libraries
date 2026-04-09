@@ -685,7 +685,7 @@ const CLASS_COLORS = {
 // ══════════════════════════════════════════════════════════════
 const US_BOUNDS = L.latLngBounds(L.latLng(24.0,-125.0), L.latLng(50.0,-66.0));
 const map = L.map('map', {
-  center:[39.5,-96], zoom:4, minZoom:4, maxZoom:18,
+  center:[39.5,-98], zoom:window.innerWidth < 600 ? 3 : 4, minZoom:3, maxZoom:18,
   maxBounds:US_BOUNDS, maxBoundsViscosity:1.0, zoomControl:true,
 });
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -693,6 +693,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
   subdomains: 'abcd',
   maxZoom: 19,
 }).addTo(map);
+setTimeout(() => map.invalidateSize(), 200);
 
 let allFeatures=[], markers=L.layerGroup().addTo(map);
 let playTimeout=null, isPlaying=false;
